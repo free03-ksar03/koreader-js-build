@@ -1,0 +1,36 @@
+name: Build ARM library
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ARM cross toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-linux-gnueabihf
+
+      - name: Build libkoreader-js.so
+        run: |
+          mkdir -p build
+          arm-linux-gnueabihf-gcc -I./quickjs -Wall -O2 -fPIC \
+            -c src/js_bridge.c -o build/js_bridge.o
+          arm-linux-gnueabihf-gcc -shared build/js_bridge.o quickjs/libquickjs.a \
+            -o build/libkoreader-js.so
+          file build/libkoreader-js.so
+
+      - name: Check glibc requirement
+        run: |
+          arm-linux-gnueabihf-objdump -T build/libkoreader-js.so | grep GLIBC | sort -u || true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libkoreader-js-arm
+          path: build/libkoreader-js.so
