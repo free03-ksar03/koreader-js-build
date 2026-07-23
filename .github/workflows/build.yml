@@ -1,4 +1,4 @@
-name: Build ARM library
+name: Build ARM library (musl static)
 
 on:
   push:
@@ -11,26 +11,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install ARM cross toolchain
+      - name: Build inside dockcross armv7l-musl container
         run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-arm-linux-gnueabihf
+          docker run --rm -v "$PWD":/work -w /work dockcross/linux-armv7l-musl \
+            bash -c "
+              mkdir -p build &&
+              arm-linux-musleabihf-gcc -I./quickjs -Wall -O2 -fPIC -c src/js_bridge.c -o build/js_bridge.o &&
+              arm-linux-musleabihf-gcc -shared -static-libgcc build/js_bridge.o quickjs/libquickjs.a -o build/libkoreader-js.so &&
+              file build/libkoreader-js.so
+            "
 
-      - name: Build libkoreader-js.so
+      - name: Show dynamic dependencies
         run: |
-          mkdir -p build
-          arm-linux-gnueabihf-gcc -I./quickjs -Wall -O2 -fPIC \
-            -c src/js_bridge.c -o build/js_bridge.o
-          arm-linux-gnueabihf-gcc -shared build/js_bridge.o quickjs/libquickjs.a \
-            -o build/libkoreader-js.so
-          file build/libkoreader-js.so
-
-      - name: Check glibc requirement
-        run: |
-          arm-linux-gnueabihf-objdump -T build/libkoreader-js.so | grep GLIBC | sort -u || true
+          docker run --rm -v "$PWD":/work -w /work dockcross/linux-armv7l-musl \
+            bash -c "arm-linux-musleabihf-objdump -T build/libkoreader-js.so | head -30 || true"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: libkoreader-js-arm
+          name: libkoreader-js-arm-musl
           path: build/libkoreader-js.so
