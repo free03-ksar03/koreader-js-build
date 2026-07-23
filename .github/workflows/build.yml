@@ -11,20 +11,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Show available compiler name
+        run: |
+          docker run --rm dockcross/linux-armv7l-musl bash -c "env | grep -i CC; which \$CC 2>/dev/null; ls /usr/*/bin/ 2>/dev/null | grep -i gcc"
+
       - name: Build inside dockcross armv7l-musl container
         run: |
           docker run --rm -v "$PWD":/work -w /work dockcross/linux-armv7l-musl \
             bash -c "
               mkdir -p build &&
-              arm-linux-musleabihf-gcc -I./quickjs -Wall -O2 -fPIC -c src/js_bridge.c -o build/js_bridge.o &&
-              arm-linux-musleabihf-gcc -shared -static-libgcc build/js_bridge.o quickjs/libquickjs.a -o build/libkoreader-js.so &&
+              \$CC -I./quickjs -Wall -O2 -fPIC -c src/js_bridge.c -o build/js_bridge.o &&
+              \$CC -shared -static-libgcc build/js_bridge.o quickjs/libquickjs.a -o build/libkoreader-js.so &&
               file build/libkoreader-js.so
             "
 
       - name: Show dynamic dependencies
         run: |
           docker run --rm -v "$PWD":/work -w /work dockcross/linux-armv7l-musl \
-            bash -c "arm-linux-musleabihf-objdump -T build/libkoreader-js.so | head -30 || true"
+            bash -c "objdump -T build/libkoreader-js.so 2>/dev/null | head -30 || true"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
