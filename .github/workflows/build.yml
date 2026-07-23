@@ -1,4 +1,4 @@
-name: Build ARM library (musl static)
+name: Build ARM library (musl fully static)
 
 on:
   push:
@@ -11,23 +11,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build inside dockcross armv7l-musl container
+      - name: Build inside dockcross armv7l-musl container (fully static)
         run: |
           docker run --rm -v "$PWD":/work -w /work dockcross/linux-armv7l-musl \
             bash -c '
               mkdir -p build &&
               $CC -I./quickjs -Wall -O2 -fPIC -c src/js_bridge.c -o build/js_bridge.o &&
-              $CC -shared -static-libgcc build/js_bridge.o quickjs/libquickjs.a -o build/libkoreader-js.so &&
+              $CC -shared -static build/js_bridge.o quickjs/libquickjs.a -o build/libkoreader-js.so -lm -lpthread &&
               file build/libkoreader-js.so
             '
 
-      - name: Show dynamic dependencies
+      - name: Show dynamic dependencies (should show none needed)
         run: |
           docker run --rm -v "$PWD":/work -w /work dockcross/linux-armv7l-musl \
-            bash -c 'objdump -T build/libkoreader-js.so 2>/dev/null | head -30 || true'
+            bash -c 'readelf -d build/libkoreader-js.so 2>/dev/null | grep -i needed || echo "NO DYNAMIC DEPENDENCIES - fully static"'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: libkoreader-js-arm-musl
+          name: libkoreader-js-arm-static
           path: build/libkoreader-js.so
