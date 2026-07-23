@@ -14,6 +14,10 @@ void koreader_js_shutdown(void);
 
 int koreader_js_eval(const char *code);
 
+/* Result of the last eval call, as a string. Valid until the next
+   koreader_js_eval() call or koreader_js_shutdown(). */
+const char *koreader_js_last_result(void);
+
 /* Information */
 
 const char *koreader_js_version(void);
